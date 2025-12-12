@@ -1,47 +1,104 @@
 services:
+  # API Gateway (Nginx)
   api-gateway:
-    # tambahkan konfigurasi Anda di sini
-    #
-    #
-    #
+    image: nginx:alpine
+    container_name: api-gateway
     ports:
-      - "8080:80"
+      - "8081:80"  # Opsional: mengubah ke 8081
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - acad-service
+    networks:
+      - microservices-network
+    restart: unless-stopped
 
   # Auth Service
   auth-service:
     build: ./auth-service
-    # tambahkan konfigurasi Anda di sini
-    #
-    #
-    #
+    container_name: auth-service
     ports:
       - "3001:3001"
     volumes:
       - ./auth-service:/app
       - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGO_URI=mongodb://auth-db:27017/auth
+      - JWT_SECRET=f8425b32491ba6f32a9276a5d4eb0b0bc
+    depends_on:
+      - auth-db
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    deploy:  # Opsional: limit resource
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
 
-  # Auth Database
+  # Auth Database (MongoDB)
   auth-db:
-    # tambahkan konfigurasi Anda di sini
-    #
-    #
-    #
+    image: mongo:6.0
+    container_name: auth-db
     ports:
       - "27017:27017"
+    volumes:
+      - auth-data:/data/db
+    networks:
+      - microservices-network
+    restart: always  # Opsional: auto-restart
 
-	# Acad Service
-	# tambahkan konfigurasi Anda di sini
-	
-	# Acad DB
-	# tambahkan konfigurasi Anda di sini
-	
+  # Acad Service (Academic Service)
+  acad-service:
+    build: ./acad-service
+    container_name: acad-service
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./acad-service:/app
+    environment:
+      - DB_HOST=acad-db
+      - DB_PORT=5432
+      - DB_NAME=academic
+      - DB_USER=acaduser
+      - DB_PASSWORD=acadpass
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    depends_on:
+      - acad-db
+      - auth-service
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # Acad Database (PostgreSQL)
+  acad-db:
+    image: postgres:15-alpine
+    container_name: acad-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=academic
+      - POSTGRES_USER=acaduser
+      - POSTGRES_PASSWORD=acadpass
+    volumes:
+      - acad-data:/var/lib/postgresql/data
+      - ./acad-service/db_kelas.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
 networks:
   microservices-network:
-    
+    driver: bridge
+    ipam:  # Opsional: mendefinisikan subnet
+      config:
+        - subnet: 172.16.0.0/28
 
 volumes:
-  #
-  # tambahkan konfigurasi Anda di sini
-  #
-
-  
+  auth-data:
+    driver: local
+  acad-data:
+    driver: local
