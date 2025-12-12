@@ -1,0 +1,47 @@
+services:
+  api-gateway:
+    # tambahkan konfigurasi Anda di sini
+    #
+    #
+    #
+    ports:
+      - "8080:80"
+
+  # Auth Service
+  auth-service:
+    build: ./auth-service
+    # tambahkan konfigurasi Anda di sini
+    #
+    #
+    #
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./auth-service:/app
+      - /app/node_modules
+
+  # Auth Database
+  auth-db:
+    # tambahkan konfigurasi Anda di sini
+    #
+    #
+    #
+    ports:
+      - "27017:27017"
+
+	# Acad Service
+	# tambahkan konfigurasi Anda di sini
+	
+	# Acad DB
+	# tambahkan konfigurasi Anda di sini
+	
+networks:
+  microservices-network:
+    
+
+volumes:
+  #
+  # tambahkan konfigurasi Anda di sini
+  #
+
+  
