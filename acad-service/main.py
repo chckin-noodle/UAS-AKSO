@@ -49,9 +49,6 @@ class KRS(BaseModel):
     nilai: Optional[str] = None
     semester: int = Field(ge=1, le=14)
 
-class UpdateNilai(BaseModel):
-    nilai: str = Field(pattern='^(A|A-|B\+|B|B-|C\+|C|D|E)$')
-
 # Database connection pool
 @contextmanager
 def get_db_connection():
@@ -134,26 +131,6 @@ async def get_mahasiswas():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/acad/mahasiswa/{nim}")
-async def get_mahasiswa_by_nim(nim: str):
-    """Mendapatkan data mahasiswa berdasarkan NIM"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            query = "SELECT * FROM mahasiswa WHERE nim = %s"
-            cursor.execute(query, (nim,))
-            row = cursor.fetchone()
-            
-            if not row:
-                raise HTTPException(status_code=404, detail="Mahasiswa tidak ditemukan")
-            
-            return {"nim": row[0], "nama": row[1], "jurusan": row[2], "angkatan": row[3]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/api/acad/mahasiswa", status_code=201)
 async def create_mahasiswa(
     mahasiswa: Mahasiswa,
@@ -198,85 +175,6 @@ async def create_mahasiswa(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/api/acad/mahasiswa/{nim}")
-async def update_mahasiswa(
-    nim: str,
-    mahasiswa: Mahasiswa,
-    admin: dict = Depends(verify_admin)
-):
-    """Update data mahasiswa (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah mahasiswa ada
-            cursor.execute("SELECT nim FROM mahasiswa WHERE nim = %s", (nim,))
-            if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Mahasiswa tidak ditemukan")
-            
-            query = """
-                UPDATE mahasiswa 
-                SET nama = %s, jurusan = %s, angkatan = %s
-                WHERE nim = %s
-                RETURNING nim, nama, jurusan, angkatan
-            """
-            cursor.execute(query, (
-                mahasiswa.nama,
-                mahasiswa.jurusan,
-                mahasiswa.angkatan,
-                nim
-            ))
-            
-            row = cursor.fetchone()
-            
-            return {
-                "message": "Mahasiswa berhasil diupdate",
-                "data": {
-                    "nim": row[0],
-                    "nama": row[1],
-                    "jurusan": row[2],
-                    "angkatan": row[3]
-                },
-                "updated_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/acad/mahasiswa/{nim}")
-async def delete_mahasiswa(
-    nim: str,
-    admin: dict = Depends(verify_admin)
-):
-    """Hapus mahasiswa (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah mahasiswa ada
-            cursor.execute("SELECT nama FROM mahasiswa WHERE nim = %s", (nim,))
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Mahasiswa tidak ditemukan")
-            
-            nama = row[0]
-            
-            # Hapus data KRS terlebih dahulu (karena foreign key)
-            cursor.execute("DELETE FROM krs WHERE nim = %s", (nim,))
-            
-            # Hapus mahasiswa
-            cursor.execute("DELETE FROM mahasiswa WHERE nim = %s", (nim,))
-            
-            return {
-                "message": f"Mahasiswa {nama} berhasil dihapus",
-                "deleted_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 # ==================== MATA KULIAH ENDPOINTS ====================
 
 @app.get("/api/acad/mata-kuliah")
@@ -295,30 +193,6 @@ async def get_mata_kuliah():
                 "nama_mk": row[1],
                 "sks": row[2]
             } for row in rows]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/acad/mata-kuliah/{kode_mk}")
-async def get_mata_kuliah_by_kode(kode_mk: str):
-    """Mendapatkan data mata kuliah berdasarkan kode"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            query = "SELECT * FROM mata_kuliah WHERE kode_mk = %s"
-            cursor.execute(query, (kode_mk,))
-            row = cursor.fetchone()
-            
-            if not row:
-                raise HTTPException(status_code=404, detail="Mata kuliah tidak ditemukan")
-            
-            return {
-                "kode_mk": row[0],
-                "nama_mk": row[1],
-                "sks": row[2]
-            }
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -358,83 +232,6 @@ async def create_mata_kuliah(
                     "sks": row[2]
                 },
                 "created_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/acad/mata-kuliah/{kode_mk}")
-async def update_mata_kuliah(
-    kode_mk: str,
-    mata_kuliah: MataKuliah,
-    admin: dict = Depends(verify_admin)
-):
-    """Update data mata kuliah (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah mata kuliah ada
-            cursor.execute("SELECT kode_mk FROM mata_kuliah WHERE kode_mk = %s", (kode_mk,))
-            if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Mata kuliah tidak ditemukan")
-            
-            query = """
-                UPDATE mata_kuliah 
-                SET nama_mk = %s, sks = %s
-                WHERE kode_mk = %s
-                RETURNING kode_mk, nama_mk, sks
-            """
-            cursor.execute(query, (
-                mata_kuliah.nama_mk,
-                mata_kuliah.sks,
-                kode_mk
-            ))
-            
-            row = cursor.fetchone()
-            
-            return {
-                "message": "Mata kuliah berhasil diupdate",
-                "data": {
-                    "kode_mk": row[0],
-                    "nama_mk": row[1],
-                    "sks": row[2]
-                },
-                "updated_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/acad/mata-kuliah/{kode_mk}")
-async def delete_mata_kuliah(
-    kode_mk: str,
-    admin: dict = Depends(verify_admin)
-):
-    """Hapus mata kuliah (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah mata kuliah ada
-            cursor.execute("SELECT nama_mk FROM mata_kuliah WHERE kode_mk = %s", (kode_mk,))
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Mata kuliah tidak ditemukan")
-            
-            nama_mk = row[0]
-            
-            # Hapus data KRS terlebih dahulu
-            cursor.execute("DELETE FROM krs WHERE kode_mk = %s", (kode_mk,))
-            
-            # Hapus mata kuliah
-            cursor.execute("DELETE FROM mata_kuliah WHERE kode_mk = %s", (kode_mk,))
-            
-            return {
-                "message": f"Mata kuliah {nama_mk} berhasil dihapus",
-                "deleted_by": admin.get('username')
             }
     except HTTPException:
         raise
@@ -543,83 +340,6 @@ async def create_nilai(
                     "semester": row[4]
                 },
                 "created_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/acad/nilai/{id_krs}")
-async def update_nilai(
-    id_krs: int,
-    update_data: UpdateNilai,
-    admin: dict = Depends(verify_admin)
-):
-    """Update nilai mahasiswa (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah KRS ada
-            cursor.execute("SELECT id_krs FROM krs WHERE id_krs = %s", (id_krs,))
-            if not cursor.fetchone():
-                raise HTTPException(status_code=404, detail="Data KRS tidak ditemukan")
-            
-            query = """
-                UPDATE krs 
-                SET nilai = %s
-                WHERE id_krs = %s
-                RETURNING id_krs, nim, kode_mk, nilai, semester
-            """
-            cursor.execute(query, (update_data.nilai, id_krs))
-            
-            row = cursor.fetchone()
-            
-            return {
-                "message": "Nilai berhasil diupdate",
-                "data": {
-                    "id_krs": row[0],
-                    "nim": row[1],
-                    "kode_mk": row[2],
-                    "nilai": row[3],
-                    "semester": row[4]
-                },
-                "updated_by": admin.get('username')
-            }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/acad/nilai/{id_krs}")
-async def delete_nilai(
-    id_krs: int,
-    admin: dict = Depends(verify_admin)
-):
-    """Hapus nilai/KRS (Admin only)"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah KRS ada dan ambil detailnya
-            cursor.execute("""
-                SELECT k.nim, m.nama, k.kode_mk, mk.nama_mk
-                FROM krs k
-                JOIN mahasiswa m ON k.nim = m.nim
-                JOIN mata_kuliah mk ON k.kode_mk = mk.kode_mk
-                WHERE k.id_krs = %s
-            """, (id_krs,))
-            
-            row = cursor.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Data KRS tidak ditemukan")
-            
-            # Hapus KRS
-            cursor.execute("DELETE FROM krs WHERE id_krs = %s", (id_krs,))
-            
-            return {
-                "message": f"Nilai {row[2]} untuk mahasiswa {row[1]} berhasil dihapus",
-                "deleted_by": admin.get('username')
             }
     except HTTPException:
         raise
