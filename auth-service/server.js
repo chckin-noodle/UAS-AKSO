@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, default: 'user' },
+  role: { type: String, enum: ['user', 'admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
     
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
@@ -44,15 +44,33 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, email, password: hashedPassword });
+    
+    // Role hanya bisa di-set jika ada role di request, default 'user'
+    const userRole = role && ['user', 'admin'].includes(role) ? role : 'user';
+    
+    const user = new User({ 
+      username, 
+      email, 
+      password: hashedPassword,
+      role: userRole 
+    });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, role: user.role }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
     
     res.status(201).json({ 
       message: 'User registered successfully',
       token,
-      user: { id: user._id, username: user.username, email: user.email }
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email,
+        role: user.role 
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -74,11 +92,20 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user._id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign(
+      { userId: user._id, username: user.username, role: user.role }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
     
     res.json({ 
       token,
-      user: { id: user._id, username: user.username, email: user.email }
+      user: { 
+        id: user._id, 
+        username: user.username, 
+        email: user.email,
+        role: user.role 
+      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -97,9 +124,89 @@ app.post('/api/auth/verify', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.userId).select('-password');
     
-    res.json({ valid: true, user });
+    if (!user) {
+      return res.status(401).json({ valid: false, error: 'User not found' });
+    }
+    
+    res.json({ 
+      valid: true, 
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     res.status(401).json({ valid: false, error: 'Invalid token' });
+  }
+});
+
+// Get all users (admin only)
+app.get('/api/auth/users', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+
+    const users = await User.find().select('-password');
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user role (admin only)
+app.patch('/api/auth/users/:userId/role', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    const { role } = req.body;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const adminUser = await User.findById(decoded.userId);
+    
+    if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin only.' });
+    }
+
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { role },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ 
+      message: 'User role updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
