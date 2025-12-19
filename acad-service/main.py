@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List
 import psycopg2
@@ -63,8 +65,8 @@ def get_db_connection():
         conn.close()
 
 # Auth verification
-async def verify_token(authorization: Optional[str] = Header(None)):
-    """Verify JWT token dengan auth service"""
+async def verify_admin(authorization: Optional[str] = Header(None)):
+    """Verify bahwa user adalah admin"""
     if not authorization:
         raise HTTPException(status_code=401, detail="No authorization header")
     
@@ -80,23 +82,18 @@ async def verify_token(authorization: Optional[str] = Header(None)):
                 raise HTTPException(status_code=401, detail="Invalid token")
             
             data = response.json()
-            return data.get('user')
+            user = data.get('user')
+            
+            if not user or user.get('role') != 'admin':
+                raise HTTPException(status_code=403, detail="Access denied. Admin only.")
+            
+            return user
     except httpx.RequestError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
-
-async def verify_admin(authorization: Optional[str] = Header(None)):
-    """Verify bahwa user adalah admin"""
-    user = await verify_token(authorization)
-    
-    if not user or user.get('role') != 'admin':
-        raise HTTPException(
-            status_code=403, 
-            detail="Access denied. Admin only."
-        )
-    
-    return user
 
 @app.on_event("startup")
 async def startup_event():
@@ -105,6 +102,13 @@ async def startup_event():
             print("Acad Service: Connected to PostgreSQL")
     except Exception as e:
         print(f"Acad Service: PostgreSQL connection error: {e}")
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="/app/static"), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse('/app/static/index.html')
 
 # Health check
 @app.get("/health")
