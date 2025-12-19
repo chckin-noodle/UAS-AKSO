@@ -3,10 +3,14 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/auth';
@@ -27,6 +31,11 @@ const User = mongoose.model('User', userSchema);
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Auth Service: Connected to MongoDB'))
   .catch(err => console.error('Auth Service: MongoDB connection error:', err));
+
+// Serve index.html for root path
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Health check
 app.get('/health', (req, res) => {
