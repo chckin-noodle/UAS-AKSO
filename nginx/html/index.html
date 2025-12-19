@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Gateway - Port 8081</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px auto;
+            display: block;
+            text-align: center;
+            width: fit-content;
+        }
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .service-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .service-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .endpoints {
+            margin-top: 40px;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .method {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .get { background: #28a745; color: white; }
+        .post { background: #007bff; color: white; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 API Gateway</h1>
+        <div class="badge">PORT 8081</div>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Microservices Architecture - Academic Management System
+        </p>
+
+        <div class="services">
+            <div class="service-card">
+                <h2>🔐 Auth Service</h2>
+                <p>Autentikasi & User Management</p>
+                <p><strong>Port:</strong> 3001</p>
+                <p><strong>Database:</strong> MongoDB</p>
+                <a href="http://localhost:3001" class="btn" target="_blank">Open Dashboard</a>
+                <a href="http://localhost:3001/health" class="btn btn-secondary" target="_blank">Health Check</a>
+            </div>
+
+            <div class="service-card">
+                <h2>📚 Academic Service</h2>
+                <p>Data Akademik & Perhitungan IPS/IPK</p>
+                <p><strong>Port:</strong> 3002</p>
+                <p><strong>Database:</strong> PostgreSQL</p>
+                <a href="http://localhost:3002" class="btn" target="_blank">Open Dashboard</a>
+                <a href="http://localhost:3002/health" class="btn btn-secondary" target="_blank">Health Check</a>
+            </div>
+        </div>
+
+        <div class="endpoints">
+            <h2>📝 API Endpoints</h2>
+            
+            <h3 style="margin-top: 30px;">Authentication</h3>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/auth/register</span> - Register user baru
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/auth/login</span> - Login dan dapatkan token
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/auth/users</span> - List users (Admin only)
+            </div>
+
+            <h3 style="margin-top: 30px;">Mahasiswa</h3>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/acad/mahasiswa</span> - List semua mahasiswa
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/acad/mahasiswa</span> - Tambah mahasiswa (Admin only)
+            </div>
+
+            <h3 style="margin-top: 30px;">Mata Kuliah</h3>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/acad/mata-kuliah</span> - List mata kuliah
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/acad/mata-kuliah</span> - Tambah mata kuliah (Admin only)
+            </div>
+
+            <h3 style="margin-top: 30px;">Nilai & IPS/IPK</h3>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/acad/nilai</span> - List nilai mahasiswa
+            </div>
+            <div class="endpoint">
+                <span class="method post">POST</span>
+                <span>/api/acad/nilai</span> - Tambah nilai (Admin only)
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/acad/ips/:nim?semester=1</span> - Hitung IPS
+            </div>
+            <div class="endpoint">
+                <span class="method get">GET</span>
+                <span>/api/acad/ipk/:nim</span> - Hitung IPK
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; color: #999;">
+            <p>Architecture: Docker Compose + Nginx + Node.js + FastAPI</p>
+            <p>Databases: MongoDB + PostgreSQL</p>
+        </div>
+    </div>
+</body>
+</html>
