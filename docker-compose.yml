@@ -4,9 +4,10 @@ services:
     image: nginx:alpine
     container_name: api-gateway
     ports:
-      - "8081:80"  # Opsional: mengubah ke 8081
+      - "8081:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
     depends_on:
       - auth-service
       - acad-service
@@ -23,11 +24,12 @@ services:
     volumes:
       - ./auth-service:/app
       - /app/node_modules
+      - ./auth-service/public:/app/public:ro
     environment:
       - NODE_ENV=development
       - PORT=3001
       - MONGO_URI=mongodb://auth-db:27017/auth
-      - JWT_SECRET=f8425b32491ba6f32a9276a5d4eb0b0bc
+      - JWT_SECRET=your_generated_jwt_secret_from_jwtsecrets_com_change_this
     depends_on:
       - auth-db
     networks:
@@ -59,6 +61,7 @@ services:
       - "3002:3002"
     volumes:
       - ./acad-service:/app
+      - ./acad-service/static:/app/static:ro
     environment:
       - DB_HOST=acad-db
       - DB_PORT=5432
